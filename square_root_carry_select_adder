@@ -1,0 +1,274 @@
+//	Author		: 
+//	Data		: 
+//	Version		:
+//	Square Root Carry Select Adder
+
+module	top_srcsa(
+			co,
+			s,
+			a,
+			b,
+			ci,
+			clk,
+			rst_b);
+
+output				co		;
+output	[21:0]		s		;
+input	[21:0]		a		;
+input	[21:0]		b		;
+input				ci		;
+input				clk		;
+input				rst_b	;
+
+wire	[5:1]		c		;
+
+//assign		ci	=	1'b0	;
+
+stg		#(.WIDTH(2)) stg0(
+							.co			(	c[1]		),
+							.s			(	s[1:0]		),
+							.a			(	a[1:0]		),
+							.b			(	b[1:0]		),
+							.ci			(	ci			),
+							.clk		(	clk			),
+							.rst_b		(	rst_b		));
+
+stg		#(.WIDTH(2)) stg1(
+     					 	.co			(	c[2]		),
+    					  	.s			(	s[3:2]		),
+    					  	.a			(	a[3:2]		),
+					      	.b			(	b[3:2]		),
+ 					     	.ci			(	c[1]		),
+ 					     	.clk		(	clk			),
+ 					     	.rst_b		(	rst_b		));
+
+stg		#(.WIDTH(3)) stg2(
+   						   	.co			(	c[3]		),
+					      	.s			(	s[6:4]		),
+ 					     	.a			(	a[6:4]		),
+ 	 				    	.b			(	b[6:4]		),
+   						   	.ci			(	c[2]		),
+   						   	.clk		(	clk			),
+  					    	.rst_b		(	rst_b		));
+
+stg		#(.WIDTH(4)) stg3(
+    					  	.co			(	c[4]		),
+   						   	.s			(	s[10:7]		),
+  					    	.a			(	a[10:7]		),
+ 					     	.b			(	b[10:7]		),
+  					    	.ci			(	c[3]		),
+  					    	.clk		(	clk			),
+    					  	.rst_b		(	rst_b		));
+
+stg		#(.WIDTH(5)) stg4(
+   						   	.co			(	c[5]		),
+   						   	.s			(	s[15:11]	),
+  					    	.a			(	a[15:11]	),
+   						   	.b			(	b[15:11]	),
+  					    	.ci			(	c[4]		),
+  					    	.clk		(	clk			),
+  					    	.rst_b		(	rst_b		));
+		
+stg		#(.WIDTH(6)) stg5(
+							.co			(	co			),
+							.s			(	s[21:16]	),
+							.a			(	a[21:16]	),
+							.b			(	b[21:16]	),
+							.ci			(	c[5]		),
+							.clk		(	clk			),
+							.rst_b		(	rst_b		));
+
+endmodule	
+
+// =============================================
+// 					Unit stage
+// =============================================
+module	stg (
+			co,
+			s,
+			a,
+			b,
+			ci,
+			clk,
+			rst_b);
+
+parameter	WIDTH	=	32	;
+
+output					co		;
+output	[WIDTH-1:0]		s		;
+input	[WIDTH-1:0]		a		;
+input	[WIDTH-1:0]		b		;
+input					ci		;
+input					clk		;
+input					rst_b	;
+
+wire	[WIDTH-1:0]		qa		;
+wire	[WIDTH-1:0]		qb		;
+wire	[WIDTH-1:0]		qs		;
+wire					c_l		;
+wire					c_h		;
+wire	[WIDTH-1:0]		s_l		;
+wire	[WIDTH-1:0]		s_h		;
+
+
+idff	#(WIDTH)	u_idff(
+								.ao			(	qa		),
+								.bo			(	qb		),
+								.ai			(	a		),
+								.bi			(	b		),
+								.clk		(	clk		),
+								.rst_b		(	rst_b	));
+
+adder	#(WIDTH)	adder_ci_l(					// logic = 0
+								.co			(	c_l		),
+								.s			(	s_l		),
+								.a			(	qa		),
+								.b			(	qb		),
+								.ci			(	1'b0	));
+			
+adder	#(WIDTH)	adder_ci_h(					// logic = 1
+								.co			(	c_h		),
+								.s			(	s_h		),
+								.a			(	qa		),
+								.b			(	qb		),
+								.ci			(	1'b1	));
+			
+mux		#(WIDTH)	u_mux(
+								.co			(	co		),
+								.so			(	qs		),
+								.c_ci0		(	c_l		),
+								.c_ci1		(	c_h		),
+								.s_ci0		(	s_l		),
+								.s_ci1		(	s_h		),
+								.ci			(	ci		)); //sel
+
+odff	#(WIDTH)	u_odff(
+								.so			(	s		),
+								.si			(	qs		),
+								.clk		(	clk		),
+								.rst_b		(	rst_b	));
+
+endmodule
+
+//	========================================================
+//					Unit adder/2-1mux/idff/odff
+//	========================================================
+
+module	adder (
+			s,
+			co,
+			a,
+			b,
+			ci);
+
+parameter	WIDTH	=	32	;	//default value
+
+output					co		;
+output	[WIDTH-1:0]		s		;
+input	[WIDTH-1:0]		a		;
+input	[WIDTH-1:0]		b		;
+input					ci		;
+
+assign	{co, s}	=	a	+	b	+	ci	;
+
+
+endmodule
+
+
+module	mux (
+			co,
+			so,
+			c_ci0,
+			c_ci1,
+			s_ci0,
+			s_ci1,
+			ci);
+ 
+parameter 	WIDTH	=	32	;
+
+output				co		;
+output	[WIDTH-1:0]	so		;
+input				c_ci0	;
+input				c_ci1	;
+input	[WIDTH-1:0]	s_ci0	;
+input	[WIDTH-1:0]	s_ci1	;
+input				ci		;
+
+wire				c_ci0	;
+wire				c_ci1	;
+wire	[WIDTH-1:0]	s_ci0	;
+wire	[WIDTH-1:0]	s_ci1	;
+wire				ci		;
+
+assign	co = (ci)?c_ci1:c_ci0;
+assign	so = (ci)?s_ci1:s_ci0;
+
+endmodule
+
+
+module	idff(
+			ao,
+			bo,
+			ai,
+			bi,
+			clk,
+			rst_b);
+
+parameter	WIDTH	=	32;
+
+output	[WIDTH-1:0]	ao		;  //adder's input
+output	[WIDTH-1:0]	bo		;  //adder's input
+input	[WIDTH-1:0]	ai		;
+input	[WIDTH-1:0]	bi		;
+input				clk		;
+input				rst_b	;
+
+reg		[WIDTH-1:0]	ao		;
+reg		[WIDTH-1:0]	bo		;
+
+always@(posedge clk or negedge rst_b ) begin
+	if(~rst_b) begin
+		ao <= 22'd0;
+	end else begin
+		ao <= ai ;
+	end
+
+end
+
+always@(posedge clk or negedge rst_b ) begin
+	
+	if(~rst_b) begin
+		bo <= 22'd0;
+	end else begin
+		bo <= bi ;
+	end
+
+end
+
+endmodule
+
+
+module	odff(
+			so,
+			si,
+			clk,
+			rst_b);
+
+parameter	WIDTH	=	32	;
+
+output	[WIDTH-1:0]	so		;
+input	[WIDTH-1:0]	si		;	//adder's sum(output)
+input				clk		;
+input				rst_b	;
+
+reg		[WIDTH-1:0]	so		;
+
+always@(posedge clk or negedge rst_b ) begin
+	if(~rst_b) begin
+		so <= 22'd0;
+	end else begin
+		so <= si ;
+	end
+end
+
+endmodule
